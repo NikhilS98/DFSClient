@@ -20,8 +20,12 @@ namespace DFSClient
                 Id = requestId++,
             };
 
-            var tokens = input.Split(" ");
+            var inputArr = input.Split("-");
+            string[] tokens = new string[inputArr.Length - 1];
+            Array.Copy(inputArr, 1, tokens, 0, inputArr.Length - 1);
+
             Command cmd;
+
             if (Enum.TryParse(tokens[0], out cmd))
             {
                 request.Command = cmd;
@@ -152,7 +156,7 @@ namespace DFSClient
         {
             if (path.IsRelativePath())
             {
-                //append it to current dir
+                //path = State.CurrentDirectory + path;
             }
             return path;
         }

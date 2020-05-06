@@ -14,7 +14,6 @@ namespace DFSClient
     {
         static void Main(string[] args)
         {
-
             try
             {
                 // Connect to a Remote server  
@@ -37,13 +36,8 @@ namespace DFSClient
 
                     byte[] buff = new byte[100];
                     int bytes = sender.Receive(buff);
-                    Console.WriteLine(Encoding.UTF8.GetString(buff, 0, bytes));
-
-                    /*string read = File.ReadAllText(@"C:\Users\Nikhil\source\repos\ReflectionDemo\ReflectionDemo\input.json");
-                    read = "{ 'id':'1', 'type':'Program', 'method':'Test', 'parameters':['hello']}";
-
-                    byte[] buffer = Encoding.UTF8.GetBytes(read);
-                    Console.WriteLine(Encoding.UTF8.GetString(buffer));*/
+                    string dir = Encoding.UTF8.GetString(buff, 0, bytes);
+                    State.CurrentDirectory = dir;
 
                     // Send the data through the socket. 
                     Task.Run(() => SendRequest(sender));
@@ -83,17 +77,16 @@ namespace DFSClient
         {
             while (true)
             {
-                string input = Console.ReadLine();
+                //string input = Console.ReadLine();
+                //Request request = new Request
+                //{
+                //    Id = 1,
+                //    Method = "OpenFile",
+                //    Type = "FileService",
+                //    Parameters = new object[] { "D:\\Courses\\DOS\\Lecture 9.pdf" }
+                //};
 
-                Request request = new Request
-                {
-                    Id = 1,
-                    Method = "OpenFile",
-                    Type = "FileService",
-                    Parameters = new object[] { "D:\\Courses\\DOS\\Lecture 9.pdf" }
-                };
-                
-                //byte[] buffer = Encoding.UTF8.GetBytes(input);
+                var request = InputParser.GetRequestFromInput(InputParser.GetUserInput());
 
                 byte[] buffer = request.SerializeToByteArray();
                 int bytesSent = 0, totalBytesSent = 0;
@@ -112,7 +105,8 @@ namespace DFSClient
             while (true)
             {
                 List<byte> bytesList = new List<byte>();
-                int size = 1000;
+                //1 GB = 1073741824 bytes
+                int size = 1000000;
 
                 byte[] buffer = new byte[size];
                 int bytesTransferred = 0;
@@ -127,21 +121,15 @@ namespace DFSClient
                 }
                 while (bytesTransferred == size);
 
-                Console.WriteLine(Encoding.UTF8.GetString(buffer));
-
                 var response = bytesList.ToArray().Deserialize<Response>();
-                File.WriteAllText(@"D:\test.txt", response.Data);
 
-                var fileToOpen = @"D:\test.txt";
-                var process = new Process();
-                process.StartInfo = new ProcessStartInfo()
-                {
-                    UseShellExecute = true,
-                    FileName = fileToOpen
-                };
+                //Response Parser. Basically all just print the received data on screen except for open file, open dir
 
-                process.Start();
-            }
+                string path = @"D:\dos\" + ((string)response.Request.Parameters[0]).GetFileName();
+                File.WriteAllText(path, response.Data);
+
+                Task.Run(() => ProcessManager.StartProcess(path));
+            }        
         }
     }
 }
