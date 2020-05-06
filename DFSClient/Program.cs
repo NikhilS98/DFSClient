@@ -84,10 +84,10 @@ namespace DFSClient
             while (true)
             {
                 string input = Console.ReadLine();
+
                 Request request = new Request
                 {
                     Id = 1,
-                    Message = "open",
                     Method = "OpenFile",
                     Type = "FileService",
                     Parameters = new object[] { "D:\\Courses\\DOS\\Lecture 9.pdf" }
@@ -112,7 +112,7 @@ namespace DFSClient
             while (true)
             {
                 List<byte> bytesList = new List<byte>();
-                int size = 100;
+                int size = 1000;
 
                 byte[] buffer = new byte[size];
                 int bytesTransferred = 0;
@@ -123,12 +123,24 @@ namespace DFSClient
                     {
                         bytesList.Add(buffer[i]);
                     }
+                    Console.WriteLine($"total bytes received till now: { bytesList.Count }, iteration: {bytesTransferred}");
                 }
                 while (bytesTransferred == size);
 
+                Console.WriteLine(Encoding.UTF8.GetString(buffer));
+
                 var response = bytesList.ToArray().Deserialize<Response>();
-                File.WriteAllBytes(@"D:\test.txt", response.Data);
-                Process.Start(@"D:\test.txt");
+                File.WriteAllText(@"D:\test.txt", response.Data);
+
+                var fileToOpen = @"D:\test.txt";
+                var process = new Process();
+                process.StartInfo = new ProcessStartInfo()
+                {
+                    UseShellExecute = true,
+                    FileName = fileToOpen
+                };
+
+                process.Start();
             }
         }
     }
