@@ -20,9 +20,9 @@ namespace DFSClient
                 Id = requestId++,
             };
 
-            var inputArr = input.Split("-");
-            string[] tokens = new string[inputArr.Length - 1];
-            Array.Copy(inputArr, 1, tokens, 0, inputArr.Length - 1);
+            var tokens = input.Split(" ");
+            //string[] tokens = new string[inputArr.Length - 1];
+            //Array.Copy(inputArr, 1, tokens, 0, inputArr.Length - 1);
 
             Command cmd;
 
@@ -58,21 +58,22 @@ namespace DFSClient
                 }
                 return request;
             }
-            else if (tokens.Length >= 2)
+            else if (input.IsPath() && !input.IsDirectory())
             {
-                OpenFile(ref request, tokens);
+                request.Command = Command.openFile;
+                OpenFile(ref request, input);
                 return request;
             }
 
             return null;
         }
 
-        private static void OpenFile(ref Request request, string[] tokens)
+        private static void OpenFile(ref Request request, string path)
         {
             // Need to do something with this. Maybe maintain a local record of requests
-            string executablePath = GetResolvedPath(tokens[0]);
+            //string executablePath = GetResolvedPath(tokens[0]);
 
-            string filePath = GetResolvedPath(tokens[1]);
+            string filePath = GetResolvedPath(path);
 
             request.Parameters = new object[] { filePath };
             request.Method = "OpenFile";

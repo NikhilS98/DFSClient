@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -14,6 +13,8 @@ namespace DFSClient
     {
         static void Main(string[] args)
         {
+            Task[] tasks = null;
+
             try
             {
                 // Connect to a Remote server  
@@ -25,27 +26,25 @@ namespace DFSClient
                 IPEndPoint remoteEP = new IPEndPoint(ipAddress, 11000);
 
                 // Create a TCP/IP  socket.    
-                Socket sender = new Socket(ipAddress.AddressFamily,
+                Socket server = new Socket(ipAddress.AddressFamily,
                     SocketType.Stream, ProtocolType.Tcp);
 
                 // Connect the socket to the remote endpoint. Catch any errors.    
                 try
                 {
                     // Connect to Remote EndPoint  
-                    sender.Connect(remoteEP);
+                    server.Connect(remoteEP);
 
                     byte[] buff = new byte[100];
-                    int bytes = sender.Receive(buff);
+                    int bytes = server.Receive(buff);
                     string dir = Encoding.UTF8.GetString(buff, 0, bytes);
                     State.CurrentDirectory = dir;
 
-                    // Send the data through the socket. 
-                    Task.Run(() => SendRequest(sender));
-                    Task.Run(() => ReceiveResponse(sender));
-
-                    // Release the socket.    
-                    //sender.Shutdown(SocketShutdown.Both);
-                    //sender.Close();
+                    tasks = new Task[]
+                    {
+                        Task.Run(() => SendRequest(server)),
+                        Task.Run(() => ReceiveResponse(server))
+                    };
 
                 }
                 catch (ArgumentNullException ane)
@@ -67,13 +66,10 @@ namespace DFSClient
                 Console.WriteLine(e.ToString());
             }
 
-            while (true)
-            {
-
-            }
+            Task.WaitAll(tasks);
         }
 
-        static void SendRequest(Socket sender)
+        static void SendRequest(Socket server)
         {
             while (true)
             {
@@ -92,7 +88,7 @@ namespace DFSClient
                 int bytesSent = 0, totalBytesSent = 0;
                 do
                 {
-                    bytesSent = sender.Send(buffer);
+                    bytesSent = server.Send(buffer);
                     totalBytesSent += bytesSent;
                 }
                 while (totalBytesSent < buffer.Length);
@@ -100,7 +96,7 @@ namespace DFSClient
 
         }
 
-        static void ReceiveResponse(Socket sender)
+        static void ReceiveResponse(Socket server)
         {
             while (true)
             {
@@ -112,7 +108,7 @@ namespace DFSClient
                 int bytesTransferred = 0;
                 do
                 {
-                    bytesTransferred = sender.Receive(buffer);
+                    bytesTransferred = server.Receive(buffer);
                     for (int i = 0; i < bytesTransferred; i++)
                     {
                         bytesList.Add(buffer[i]);
@@ -122,13 +118,7 @@ namespace DFSClient
                 while (bytesTransferred == size);
 
                 var response = bytesList.ToArray().Deserialize<Response>();
-
-                //Response Parser. Basically all just print the received data on screen except for open file, open dir
-
-                string path = @"D:\dos\" + ((string)response.Request.Parameters[0]).GetFileName();
-                File.WriteAllText(path, response.Data);
-
-                Task.Run(() => ProcessManager.StartProcess(path));
+                ResponseParser.Parse(response);
             }        
         }
     }
