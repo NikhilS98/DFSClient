@@ -1,15 +1,16 @@
 ﻿using DFSUtility;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace DFSClient
 {
     public static class InputParser
     {
-        public static int requestId = 0;
         public static string GetUserInput()
         {
+            Console.Write(State.CurrentDirectory + ">");
             return Console.ReadLine();
         }
 
@@ -17,7 +18,7 @@ namespace DFSClient
         {
             Request request = new Request()
             {
-                Id = requestId++,
+                Id = RequestHelper.GetRequestId()
             };
 
             var tokens = input.Split(" ");
@@ -36,6 +37,9 @@ namespace DFSClient
                         break;
                     case Command.cd:
                         OpenDirectory(ref request, tokens);
+                        break;
+                    case Command.mkdir:
+                        CreateDirectory(ref request, tokens);
                         break;
                     case Command.rmdir:
                         RemoveDirectory(ref request, tokens);
@@ -58,7 +62,7 @@ namespace DFSClient
                 }
                 return request;
             }
-            else if (input.IsPath() && !input.IsDirectory())
+            else if (!input.IsDirectory())
             {
                 request.Command = Command.openFile;
                 OpenFile(ref request, input);
@@ -82,10 +86,9 @@ namespace DFSClient
 
         private static void RemoveFile(ref Request request, string[] tokens)
         {
-            string currentPath = GetResolvedPath(tokens[1]);
-            string newPath = GetResolvedPath(tokens[2]);
+            string filePath = GetResolvedPath(tokens[1]);
 
-            request.Parameters = new object[] { currentPath, newPath };
+            request.Parameters = new object[] { filePath };
             request.Method = "RemoveFile";
             request.Type = "FileService";
         }
@@ -113,6 +116,7 @@ namespace DFSClient
 
         private static void ListDirectory(ref Request request)
         {
+            request.Parameters = new object[] { State.CurrentDirectory };
             request.Method = "ListContent";
             request.Type = "DirectoryService";
         }
@@ -122,6 +126,14 @@ namespace DFSClient
             
             request.Parameters = new object[] { dirPath };
             request.Method = "OpenDirectory";
+            request.Type = "DirectoryService";
+        }
+        private static void CreateDirectory(ref Request request, string[] tokens)
+        {
+            string dirPath = GetResolvedPath(tokens[1]);
+
+            request.Parameters = new object[] { dirPath };
+            request.Method = "CreateDirectory";
             request.Type = "DirectoryService";
         }
         private static void RemoveDirectory(ref Request request, string[] tokens)
@@ -157,7 +169,11 @@ namespace DFSClient
         {
             if (path.IsRelativePath())
             {
-                //path = State.CurrentDirectory + path;
+                path = Path.Combine(State.CurrentDirectory, path);
+            }
+            else
+            {
+                path = path.Substring(1);
             }
             return path;
         }

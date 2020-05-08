@@ -1,7 +1,10 @@
-﻿using System;
+﻿using DFSUtility;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace DFSClient
 {
@@ -19,8 +22,7 @@ namespace DFSClient
             process.Start();
             process.WaitForExit();
 
-            Console.WriteLine("Exited");
-            //do something on exit like send request to server for saving it.
+           
         }
     }
 }

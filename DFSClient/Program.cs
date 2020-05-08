@@ -17,13 +17,11 @@ namespace DFSClient
 
             try
             {
-                // Connect to a Remote server  
-                // Get Host IP Address that is used to establish a connection  
-                // In this case, we get one IP address of localhost that is IP : 127.0.0.1  
-                // If a host has multiple addresses, you will get a list of addresses  
-                IPHostEntry host = Dns.GetHostEntry("localhost");
-                IPAddress ipAddress = host.AddressList[0];
-                IPEndPoint remoteEP = new IPEndPoint(ipAddress, 11000);
+                Console.Write("Select port to connect to: ");
+                string port = Console.ReadLine();
+
+                IPAddress ipAddress = IPAddress.Parse("192.168.0.105");
+                IPEndPoint remoteEP = new IPEndPoint(ipAddress, Convert.ToInt32(port));
 
                 // Create a TCP/IP  socket.    
                 Socket server = new Socket(ipAddress.AddressFamily,
@@ -38,7 +36,11 @@ namespace DFSClient
                     byte[] buff = new byte[100];
                     int bytes = server.Receive(buff);
                     string dir = Encoding.UTF8.GetString(buff, 0, bytes);
-                    State.CurrentDirectory = dir;
+                    State.CurrentDirectory = "root";
+                    State.Server = server;
+                    
+                    State.LocalRootDirectory = "D:\\dos";
+                    Directory.CreateDirectory(State.LocalRootDirectory);
 
                     tasks = new Task[]
                     {
@@ -73,25 +75,18 @@ namespace DFSClient
         {
             while (true)
             {
-                //string input = Console.ReadLine();
-                //Request request = new Request
-                //{
-                //    Id = 1,
-                //    Method = "OpenFile",
-                //    Type = "FileService",
-                //    Parameters = new object[] { "D:\\Courses\\DOS\\Lecture 9.pdf" }
-                //};
-
+                State.WaitingForInput = true;
                 var request = InputParser.GetRequestFromInput(InputParser.GetUserInput());
+                State.WaitingForInput = false;
+
+                if(request == null)
+                {
+                    Console.WriteLine("Command not recognized");
+                    continue;
+                }
 
                 byte[] buffer = request.SerializeToByteArray();
-                int bytesSent = 0, totalBytesSent = 0;
-                do
-                {
-                    bytesSent = server.Send(buffer);
-                    totalBytesSent += bytesSent;
-                }
-                while (totalBytesSent < buffer.Length);
+                Network.SendRequest(server, buffer);
             }
 
         }
@@ -100,25 +95,9 @@ namespace DFSClient
         {
             while (true)
             {
-                List<byte> bytesList = new List<byte>();
-                //1 GB = 1073741824 bytes
-                int size = 1000000;
-
-                byte[] buffer = new byte[size];
-                int bytesTransferred = 0;
-                do
-                {
-                    bytesTransferred = server.Receive(buffer);
-                    for (int i = 0; i < bytesTransferred; i++)
-                    {
-                        bytesList.Add(buffer[i]);
-                    }
-                    Console.WriteLine($"total bytes received till now: { bytesList.Count }, iteration: {bytesTransferred}");
-                }
-                while (bytesTransferred == size);
-
-                var response = bytesList.ToArray().Deserialize<Response>();
-                ResponseParser.Parse(response);
+                var bytes = Network.ReceiveResponse(server, 100000);
+                var response = bytes.Deserialize<Response>();
+                Task.Run(() => ResponseParser.Parse(response));
             }        
         }
     }
