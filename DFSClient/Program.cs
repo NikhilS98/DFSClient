@@ -17,11 +17,17 @@ namespace DFSClient
 
             try
             {
-                Console.Write("Select port to connect to: ");
-                string port = Console.ReadLine();
+                //Console.Write("Select port to connect to: ");
+                //string port = Console.ReadLine();
 
-                IPAddress ipAddress = IPAddress.Parse("192.168.0.105");
-                IPEndPoint remoteEP = new IPEndPoint(ipAddress, Convert.ToInt32(port));
+                var ips = File.ReadAllLines("D:\\server\\config.txt");
+
+                int index = new Random().Next(ips.Length);
+                string ipPort = ips[index];
+
+                IPAddress ipAddress = IPAddress.Parse(ipPort.Substring(0, ipPort.LastIndexOf(":")));
+                IPEndPoint remoteEP = new IPEndPoint(ipAddress, 
+                    Convert.ToInt32(ipPort.Substring(ipPort.LastIndexOf(":") + 1)));
 
                 // Create a TCP/IP  socket.    
                 Socket server = new Socket(ipAddress.AddressFamily,
@@ -89,7 +95,16 @@ namespace DFSClient
                 }
 
                 byte[] buffer = request.SerializeToByteArray();
-                Network.Send(server, buffer);
+
+                try
+                {
+                    Network.Send(server, buffer);
+                    Console.WriteLine($"Request {request.Id} sent");
+                }
+                catch(Exception e)
+                {
+                    //connect with another server
+                }
             }
 
         }
@@ -98,9 +113,16 @@ namespace DFSClient
         {
             while (true)
             {
-                var bytes = Network.Receive(server, 100000);
-                var response = bytes.Deserialize<Response>();
-                Task.Run(() => ResponseParser.Parse(response));
+                try
+                {
+                    var bytes = Network.Receive(server, 100000);
+                    var response = bytes.Deserialize<Response>();
+                    Task.Run(() => ResponseParser.Parse(response));
+                }
+                catch (Exception e)
+                {
+                    //try connecting with another server from config
+                }
             }        
         }
     }

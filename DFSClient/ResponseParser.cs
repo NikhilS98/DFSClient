@@ -15,7 +15,7 @@ namespace DFSClient
         {
             string msg = null;
             if(!response.IsSuccess)
-                msg = $"{response.Request.Id} failed: {response.Message}";
+                msg = $"Request {response.Request.Id} failed: {response.Message}";
             else if (response.Request.Command == Command.openFile)
             {
                 Directory.CreateDirectory(Path.Combine(State.LocalRootDirectory,
@@ -52,7 +52,7 @@ namespace DFSClient
             }
             else
             {
-                msg = $"{response.Request.Id} succeeded:\n{response.Message}";
+                msg = $"Request {response.Request.Id} succeeded: \n{response.Message}";
             }
 
             if (State.WaitingForInput && msg != null)

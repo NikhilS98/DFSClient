@@ -27,46 +27,53 @@ namespace DFSClient
 
             Command cmd;
 
-            if (Enum.TryParse(tokens[0], out cmd))
+            try
             {
-                request.Command = cmd;
-                switch (cmd)
+                if (Enum.TryParse(tokens[0], out cmd))
                 {
-                    case Command.ls:
-                        ListDirectory(ref request);
-                        break;
-                    case Command.cd:
-                        OpenDirectory(ref request, tokens);
-                        break;
-                    case Command.mkdir:
-                        CreateDirectory(ref request, tokens);
-                        break;
-                    case Command.rmdir:
-                        RemoveDirectory(ref request, tokens);
-                        break;
-                    case Command.rm:
-                        RemoveFile(ref request, tokens);
-                        break;
-                    case Command.mvdir:
-                        MoveDirectory(ref request, tokens);
-                        break;
-                    case Command.mv:
-                        MoveFile(ref request, tokens);
-                        break;
-                    case Command.cpdir:
-                        CopyDirectory(ref request, tokens);
-                        break;
-                    case Command.cp:
-                        CopyFile(ref request, tokens);
-                        break;
+                    request.Command = cmd;
+                    switch (cmd)
+                    {
+                        case Command.ls:
+                            ListDirectory(ref request);
+                            break;
+                        case Command.cd:
+                            OpenDirectory(ref request, tokens);
+                            break;
+                        case Command.mkdir:
+                            CreateDirectory(ref request, tokens);
+                            break;
+                        case Command.rmdir:
+                            RemoveDirectory(ref request, tokens);
+                            break;
+                        case Command.rm:
+                            RemoveFile(ref request, tokens);
+                            break;
+                        case Command.mvdir:
+                            MoveDirectory(ref request, tokens);
+                            break;
+                        case Command.mv:
+                            MoveFile(ref request, tokens);
+                            break;
+                        case Command.cpdir:
+                            CopyDirectory(ref request, tokens);
+                            break;
+                        case Command.cp:
+                            CopyFile(ref request, tokens);
+                            break;
+                    }
+                    return request;
                 }
-                return request;
+                else if (!input.IsDirectory())
+                {
+                    request.Command = Command.openFile;
+                    OpenFile(ref request, input);
+                    return request;
+                }
             }
-            else if (!input.IsDirectory())
+            catch(Exception e)
             {
-                request.Command = Command.openFile;
-                OpenFile(ref request, input);
-                return request;
+                //Console.WriteLine("Invalid input");
             }
 
             return null;
