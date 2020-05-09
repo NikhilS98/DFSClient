@@ -33,9 +33,12 @@ namespace DFSClient
                     // Connect to Remote EndPoint  
                     server.Connect(remoteEP);
 
-                    byte[] buff = new byte[100];
-                    int bytes = server.Receive(buff);
-                    string dir = Encoding.UTF8.GetString(buff, 0, bytes);
+                    Request request = new Request { Command = Command.clientConnect };
+                    Network.Send(server, request.SerializeToByteArray());
+
+                    var buff = Network.Receive(server);
+                    Console.WriteLine(Encoding.UTF8.GetString(buff));
+
                     State.CurrentDirectory = "root";
                     State.Server = server;
                     
@@ -44,8 +47,8 @@ namespace DFSClient
 
                     tasks = new Task[]
                     {
-                        Task.Run(() => SendRequest(server)),
-                        Task.Run(() => ReceiveResponse(server))
+                        Task.Run(() => Send(server)),
+                        Task.Run(() => Receive(server))
                     };
 
                 }
@@ -71,7 +74,7 @@ namespace DFSClient
             Task.WaitAll(tasks);
         }
 
-        static void SendRequest(Socket server)
+        static void Send(Socket server)
         {
             while (true)
             {
@@ -86,16 +89,16 @@ namespace DFSClient
                 }
 
                 byte[] buffer = request.SerializeToByteArray();
-                Network.SendRequest(server, buffer);
+                Network.Send(server, buffer);
             }
 
         }
 
-        static void ReceiveResponse(Socket server)
+        static void Receive(Socket server)
         {
             while (true)
             {
-                var bytes = Network.ReceiveResponse(server, 100000);
+                var bytes = Network.Receive(server, 100000);
                 var response = bytes.Deserialize<Response>();
                 Task.Run(() => ResponseParser.Parse(response));
             }        
