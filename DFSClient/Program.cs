@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using DFSUtility;
+using System.Linq;
 
 namespace DFSClient
 {
@@ -15,69 +16,65 @@ namespace DFSClient
         {
             Task[] tasks = null;
 
+            /*string clientDir = "D:\\client";
+            int suffix = 1;
+            while (Directory.Exists(clientDir))
+            {
+                clientDir += suffix++;
+            }
+            State.LocalRootDirectory = clientDir;
+            Directory.CreateDirectory(State.LocalRootDirectory);*/
+
+            if (!Directory.Exists(State.LocalRootDirectory))
+            {
+                Directory.CreateDirectory(State.LocalRootDirectory);
+            }
+
+            ConfigurationHelper.Create(State.ConfigFilePath, new string[] { "192.168.0.105:11000" });
+
+            var ips = ConfigurationHelper.Read(State.ConfigFilePath).ToList();
+
+            int index = new Random().Next(ips.Count);
+            string ipPort = ips[index];
+
+            IPAddress ipAddress = IPAddress.Parse(ipPort.Substring(0, ipPort.LastIndexOf(":")));
+            IPEndPoint remoteEP = new IPEndPoint(ipAddress,
+                Convert.ToInt32(ipPort.Substring(ipPort.LastIndexOf(":") + 1)));
+
+            // Create a TCP/IP  socket.    
+            Socket server = new Socket(ipAddress.AddressFamily,
+                SocketType.Stream, ProtocolType.Tcp);
+
+            // Connect the socket to the remote endpoint. Catch any errors.    
             try
             {
-                //Console.Write("Select port to connect to: ");
-                //string port = Console.ReadLine();
+                // Connect to Remote EndPoint  
+                server.Connect(remoteEP);
 
-                var ips = File.ReadAllLines("D:\\server\\config.txt");
+                Request request = new Request { Command = Command.clientConnect };
+                Network.Send(server, request.SerializeToByteArray());
 
-                int index = new Random().Next(ips.Length);
-                string ipPort = ips[index];
+                var buff = Network.Receive(server);
+                var ipList = buff.Deserialize<List<string>>();
+                ConfigurationHelper.Update(State.ConfigFilePath, ipList);
 
-                IPAddress ipAddress = IPAddress.Parse(ipPort.Substring(0, ipPort.LastIndexOf(":")));
-                IPEndPoint remoteEP = new IPEndPoint(ipAddress, 
-                    Convert.ToInt32(ipPort.Substring(ipPort.LastIndexOf(":") + 1)));
+                State.CurrentDirectory = "root";
+                State.Server = server;
 
-                // Create a TCP/IP  socket.    
-                Socket server = new Socket(ipAddress.AddressFamily,
-                    SocketType.Stream, ProtocolType.Tcp);
-
-                // Connect the socket to the remote endpoint. Catch any errors.    
-                try
+                tasks = new Task[]
                 {
-                    // Connect to Remote EndPoint  
-                    server.Connect(remoteEP);
-
-                    Request request = new Request { Command = Command.clientConnect };
-                    Network.Send(server, request.SerializeToByteArray());
-
-                    var buff = Network.Receive(server);
-                    Console.WriteLine(Encoding.UTF8.GetString(buff));
-
-                    State.CurrentDirectory = "root";
-                    State.Server = server;
-                    
-                    State.LocalRootDirectory = "D:\\dos";
-                    Directory.CreateDirectory(State.LocalRootDirectory);
-
-                    tasks = new Task[]
-                    {
                         Task.Run(() => Send(server)),
                         Task.Run(() => Receive(server))
-                    };
+                };
 
-                }
-                catch (ArgumentNullException ane)
-                {
-                    Console.WriteLine("ArgumentNullException : {0}", ane.ToString());
-                }
-                catch (SocketException se)
-                {
-                    Console.WriteLine("SocketException : {0}", se.ToString());
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine("Unexpected exception : {0}", e.ToString());
-                }
+                Task.WaitAll(tasks);
 
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.ToString());
+                Console.WriteLine("Unexpected exception : {0}", e.ToString());
+                //connect to another server
             }
-
-            Task.WaitAll(tasks);
         }
 
         static void Send(Socket server)
@@ -88,9 +85,11 @@ namespace DFSClient
                 var request = InputParser.GetRequestFromInput(InputParser.GetUserInput());
                 State.WaitingForInput = false;
 
-                if(request == null)
+                if (request == null)
                 {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.WriteLine("Command not recognized");
+                    Console.ResetColor();
                     continue;
                 }
 
@@ -99,9 +98,11 @@ namespace DFSClient
                 try
                 {
                     Network.Send(server, buffer);
+                    Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine($"Request {request.Id} sent");
+                    Console.ResetColor();
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     //connect with another server
                 }
@@ -123,7 +124,12 @@ namespace DFSClient
                 {
                     //try connecting with another server from config
                 }
-            }        
+            }
+        }
+
+        static void Connect(string ipPort)
+        {
+
         }
     }
 }

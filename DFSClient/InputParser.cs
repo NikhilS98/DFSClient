@@ -11,7 +11,10 @@ namespace DFSClient
         public static string GetUserInput()
         {
             Console.Write(State.CurrentDirectory + ">");
-            return Console.ReadLine();
+            string input = Console.ReadLine();
+            if (input.Equals("exit"))
+                Environment.Exit(0);
+            return input;
         }
 
         public static Request GetRequestFromInput(string input)

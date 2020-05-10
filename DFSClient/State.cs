@@ -10,7 +10,8 @@ namespace DFSClient
     {
         public static string CurrentDirectory { get; set; }
         public static Socket Server { get; set; }
-        public static string LocalRootDirectory { get; set; }
+        public static string LocalRootDirectory { get; set; } = "D:\\client";
         public static bool WaitingForInput { get; set; }
+        public static string ConfigFilePath { get; set; } = "D:\\client\\config.txt";
     }
 }

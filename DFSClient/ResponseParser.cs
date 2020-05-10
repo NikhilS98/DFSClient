@@ -14,8 +14,11 @@ namespace DFSClient
         public static void Parse(Response response)
         {
             string msg = null;
-            if(!response.IsSuccess)
+            if (!response.IsSuccess)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
                 msg = $"Request {response.Request.Id} failed: {response.Message}";
+            }
             else if (response.Request.Command == Command.openFile)
             {
                 Directory.CreateDirectory(Path.Combine(State.LocalRootDirectory,
@@ -44,14 +47,20 @@ namespace DFSClient
                 }
                 while (totalBytesSent < buffer.Length);
             }
-            else if(response.Request.Command == Command.cd)
+            else if (response.Request.Command == Command.cd)
             {
                 State.CurrentDirectory = response.Data;
                 Console.WriteLine();
                 Console.Write(State.CurrentDirectory + ">");
             }
+            else if (response.Command == Command.updateConfig)
+            {
+                var ips = response.Bytes.Deserialize<List<string>>();
+                ConfigurationHelper.Update(State.ConfigFilePath, ips);
+            }
             else
             {
+                Console.ForegroundColor = ConsoleColor.Green;
                 msg = $"Request {response.Request.Id} succeeded: \n{response.Message}";
             }
 
@@ -59,6 +68,7 @@ namespace DFSClient
             {
                 Console.WriteLine();
                 Console.WriteLine(msg);
+                Console.ResetColor();
                 Console.Write(State.CurrentDirectory + ">");
             }
         }
