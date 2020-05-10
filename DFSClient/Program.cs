@@ -12,10 +12,10 @@ namespace DFSClient
 {
     class Program
     {
+        static Task[] tasks = null;
         static void Main(string[] args)
         {
-            Task[] tasks = null;
-
+            
             /*string clientDir = "D:\\client";
             int suffix = 1;
             while (Directory.Exists(clientDir))
@@ -34,47 +34,23 @@ namespace DFSClient
 
             var ips = ConfigurationHelper.Read(State.ConfigFilePath).ToList();
 
-            int index = new Random().Next(ips.Count);
-            string ipPort = ips[index];
-
-            IPAddress ipAddress = IPAddress.Parse(ipPort.Substring(0, ipPort.LastIndexOf(":")));
-            IPEndPoint remoteEP = new IPEndPoint(ipAddress,
-                Convert.ToInt32(ipPort.Substring(ipPort.LastIndexOf(":") + 1)));
-
-            // Create a TCP/IP  socket.    
-            Socket server = new Socket(ipAddress.AddressFamily,
-                SocketType.Stream, ProtocolType.Tcp);
-
-            // Connect the socket to the remote endpoint. Catch any errors.    
-            try
+            do
             {
-                // Connect to Remote EndPoint  
-                server.Connect(remoteEP);
+                int index = new Random().Next(ips.Count);
+                string ipPort = ips[index];
 
-                Request request = new Request { Command = Command.clientConnect };
-                Network.Send(server, request.SerializeToByteArray());
+                Connect(ipPort);
 
-                var buff = Network.Receive(server);
-                var ipList = buff.Deserialize<List<string>>();
-                ConfigurationHelper.Update(State.ConfigFilePath, ipList);
+                ips = ConfigurationHelper.Read(State.ConfigFilePath).ToList();
+                if (ips.Remove(ipPort))
+                    ConfigurationHelper.Update(State.ConfigFilePath, ips);
 
-                State.CurrentDirectory = "root";
-                State.Server = server;
+            } while (ips.Count > 0);
 
-                tasks = new Task[]
-                {
-                        Task.Run(() => Send(server)),
-                        Task.Run(() => Receive(server))
-                };
+            Console.WriteLine("Server not found");
+            if (File.Exists(State.ConfigFilePath))
+                File.Delete(State.ConfigFilePath);
 
-                Task.WaitAll(tasks);
-
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Unexpected exception : {0}", e.ToString());
-                //connect to another server
-            }
         }
 
         static void Send(Socket server)
@@ -105,6 +81,7 @@ namespace DFSClient
                 catch (Exception e)
                 {
                     //connect with another server
+                    break;
                 }
             }
 
@@ -122,14 +99,68 @@ namespace DFSClient
                 }
                 catch (Exception e)
                 {
-                    //try connecting with another server from config
+                    break;
                 }
             }
         }
 
         static void Connect(string ipPort)
         {
+            IPAddress ipAddress = IPAddress.Parse(ipPort.Substring(0, ipPort.LastIndexOf(":")));
+            IPEndPoint remoteEP = new IPEndPoint(ipAddress,
+                Convert.ToInt32(ipPort.Substring(ipPort.LastIndexOf(":") + 1)));
 
+            // Create a TCP/IP  socket.    
+            Socket server = new Socket(ipAddress.AddressFamily,
+                SocketType.Stream, ProtocolType.Tcp);
+
+            // Connect the socket to the remote endpoint. Catch any errors.    
+            try
+            {
+                // Connect to Remote EndPoint  
+                server.Connect(remoteEP);
+
+                Request request = new Request { Command = Command.clientConnect };
+                Network.Send(server, request.SerializeToByteArray());
+
+                var buff = Network.Receive(server);
+                var ipList = buff.Deserialize<List<string>>();
+                ConfigurationHelper.Update(State.ConfigFilePath, ipList);
+
+                State.CurrentDirectory = "root";
+                State.Server = server;
+
+                bool isConnected = true;
+                foreach (var req in State.GetPendingRequests())
+                {
+                    try
+                    {
+                        Network.Send(server, req.SerializeToByteArray());
+                    }
+                    catch(Exception e)
+                    {
+                        isConnected = false;
+                        break;
+                    }
+                }
+
+                if (isConnected)
+                {
+                    tasks = new Task[]
+                    {
+                    Task.Run(() => Send(server)),
+                    Task.Run(() => Receive(server))
+                    };
+
+                    Task.WaitAll(tasks);
+                }
+
+            }
+            catch (Exception e)
+            {
+                //Console.WriteLine($"Unable to connect to server {ipPort} : {e.Message}");
+
+            }
         }
     }
 }
