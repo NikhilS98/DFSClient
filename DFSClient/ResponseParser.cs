@@ -19,6 +19,11 @@ namespace DFSClient
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 msg = $"Request {response.Request.Id} failed: {response.Message}";
             }
+            else if (response.Command == Command.updateConfig)
+            {
+                var ips = response.Bytes.Deserialize<List<string>>();
+                ConfigurationHelper.Update(State.ConfigFilePath, ips);
+            }
             else if (response.Request.Command == Command.openFile)
             {
                 Directory.CreateDirectory(Path.Combine(State.LocalRootDirectory,
@@ -53,11 +58,7 @@ namespace DFSClient
                 Console.WriteLine();
                 Console.Write(State.CurrentDirectory + ">");
             }
-            else if (response.Command == Command.updateConfig)
-            {
-                var ips = response.Bytes.Deserialize<List<string>>();
-                ConfigurationHelper.Update(State.ConfigFilePath, ips);
-            }
+            
             else
             {
                 Console.ForegroundColor = ConsoleColor.Green;
